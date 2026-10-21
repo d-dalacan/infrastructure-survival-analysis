@@ -1,0 +1,10 @@
+*.parquet
+*.npy
+*.csv
+Dataset/
+cnn_inputs/
+.ipynb_checkpoints/
+__pycache__/
+.env
+kaggle.json
+*.key
