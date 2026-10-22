@@ -182,3 +182,5 @@ consecutive and complete.
 **Limits.** One drive model only; many failures show no warning in these readings; the alarm level depends on how costly
 a missed failure is for you, which is why it is a slider.
 """)
+
+    st.caption("Group One Capstone Project, 2026, NIHUB FUT Minna.")
