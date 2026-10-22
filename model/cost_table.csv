@@ -1,0 +1,6 @@
+R,false-alarm rate,false alarms per day,failed drives caught,cost,cost with no alarms
+5,0.001%,0.2,3 of 129,644,645
+10,0.002%,0.3,5 of 129,1265,1290
+20,0.010%,1.8,12 of 129,2480,2580
+50,0.102%,18.5,48 of 129,5453,6450
+100,0.102%,18.5,48 of 129,9503,12900
