@@ -1,68 +1,74 @@
-# Hard drive failure prediction
+# Disk failure prediction
 
-Predicts which hard drives are likely to fail within the next 14 days, from their daily SMART readings, and ranks them in a watch-list whose alarm level can be set by how costly a missed failure is. Built on Backblaze Drive Stats data for one drive model (Seagate ST12000NM0008).
+**Group One Capstone Project, 2026, NIHUB FUT Minna**
 
-**Group One Capstone Project**
-** NIHUB FUT Minna, 2026**
+Estimates whether a Seagate ST12000NM0008 hard drive will fail within the next 14 days, from its daily SMART readings (Backblaze data), with an interactive Streamlit app.
 
-Instructor: [SIR COLLINS]
+**Live app:** (paste your Streamlit link here)
 
-**Live app:** [https://infrastructure-survival-analysis-project.streamlit.app/]
+## What the app does
 
-## What it does
+- **Try an example:** 20 real drive histories from Q1 2026, ranked by risk.
+- **Get prediction, One drive:** type the 7 readings, or paste the output of `smartctl -A`, and click Predict. The result is a colour level (at risk, keep an eye on it, good), how often drives at that level failed within 14 days, and the warning signs. This uses one reading.
+- **Get prediction, Many drives:** upload a CSV of daily readings. Drives with 9 consecutive days are scored with the more accurate 9-day history; drives with fewer days from their latest day. The result is a ranked list that can be downloaded.
 
-For each drive, the model takes the last 14 days of readings, summarises them into 20 numbers and gives a risk score. Drives above the chosen alarm level are flagged, with the readings that pushed the score up. The app lets you upload your own drive readings or try demo drives, and move a cost slider ("a missed failure costs as much as N false alarms").
+## How the levels work
 
-## Results (validation, first quarter of 2026)
+Levels are set on the validation quarter (Q1 2026) from how a drive's score compares with healthy drive-days: red is the worst 1%, yellow the next 4%, green the other 95%.
 
-129 drives failed in the quarter. At most 92 of them (71.3%) can be caught from these readings: 25 have no usable 14-day window and 12 look healthy on all four core counters.
+| Level | One reading: drive-days that failed within 14 days | 9-day history |
+|---|---|---|
+| At risk | 1 in 24 | 1 in 19 |
+| Keep an eye on it | 1 in 200 | 1 in 330 |
+| Good | 1 in 5,500 | 1 in 6,500 |
 
-| False alarms allowed (healthy drive-days flagged) | Failed drives caught (95% range) |
-|---|---|
-| 1% (10 per 1,000 drive-days) | 65% (56% to 73%) |
-| 0.1% (1 per 1,000) | 36% (29% to 45%) |
-| 0.01% (0.1 per 1,000) | 9% (4% to 15%) |
+An average drive-day was about 1 in 1,200. Of the 129 drives that failed in Q1 2026, the one-reading model had 62 (48%) in red at some point and 87 (67%) in red or yellow; the 9-day model 85 (66%) and 91 (71%). About 1 in 20 healthy drives shows yellow or red.
 
-With a missed failure costing 100 false alarms, the cheapest alarm level raised about 18.5 false alarms per day and caught 48 of the 129 failed drives. The alarm levels were chosen and measured on the same quarter, so real results can be somewhat lower. The second quarter of 2026 has been held out and not opened.
+## Results (validation: Q1 2026, 129 failed drives)
+
+| False alarms | 9-day history | One reading |
+|---|---|---|
+| 1% of healthy drive-days | 65.9% (57-74%) | 48.1% (39-56%) |
+| 0.1% | 38.0% (29-47%) | 24.8% (17-32%) |
+| 0.01% | 9.3% (4-14%) | 10.1% (5-15%) |
+
+- At most 92 of the 129 failed drives (71.3%) can be caught from these readings: 25 have no usable window and 12 look healthy on all four core counters.
+- Gradient boosting performed about the same as logistic regression, so logistic regression is used (simpler, explainable).
+- Ranges come from resampling drives 1,000 times. A drive counts as caught if any of its failing windows is flagged.
 
 ## Method
 
-- One example is one drive on one day. The input is that drive's last 14 consecutive days of readings; the label is 1 if the drive fails within the next 14 days.
-- The split is by date, never random: training on 2023 to 2025, validation on Q1 2026, with a 14-day gap so no label looks past the end of its period.
-- Healthy examples are sampled for training because there are too many; validation keeps every window, so its failure share is real. Failures are weighted up in training.
-- Scores are reported per drive (is a failed drive caught at least once?), with ranges from resampling drives, not windows.
-- Logistic regression was chosen over gradient boosting: the two perform alike, and logistic regression is simpler and explainable.
+- One example is one drive-day. The input is the last 9 days of readings (only the first and last day are used); the label is 1 if the drive fails 1 to 14 days later.
+- Split by date with a 14-day gap: training to 2025-12-17, validation Q1 2026.
+- 20 summary features for the 9-day model, 10 for the one-reading model; logistic regression with failures weighted up.
+- Q2 2026 was kept for a final test. It was used only to draw 12 random drive-days for a live demonstration; the model was not changed afterwards, and the full Q2 evaluation has not been run.
 
 ## Repository
 
 | File | What it is |
 |---|---|
-| `01_data_loading_and_eda.ipynb` | Data loading and exploratory analysis |
-| `02_modelling.ipynb` | Label design, features, models, drive-level scores, alarm levels, files for the app |
-| `02b_cnn_experiments.ipynb` | Additional experiments with a small neural network; not used in the app |
-| `survival_analysis.ipynb` | Earlier exploratory notebook |
 | `app.py` | The Streamlit app |
-| `model/` | The saved model, alarm levels, validation summary and demo drives |
-| `requirements.txt` | Python packages (pinned versions) |
+| `02_modelling.ipynb` | Label design, features, models, levels, saving the model |
+| `02b_cnn_experiments.ipynb` | Extra experiments with other model types (no improvement shown) |
+| `parquet_maker.py` | Builds the training data from Backblaze daily files |
+| `prepare_upload.py` | Combines Backblaze daily CSVs into one small CSV for the app: `python prepare_upload.py FOLDER OUT.csv` |
+| `model/` | Saved models, levels, cost tables, validation summary, example drives |
+| `.streamlit/config.toml` | App theme and upload limit |
+| `requirements.txt` | Pinned library versions |
 
 ## Run the app
 
-```
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-## Rebuild the model
-
-The raw data is not in this repository. Download the Backblaze Drive Stats files, keep the Seagate ST12000NM0008 rows, and save one parquet file per quarter in a `Dataset` folder. The cleaned training file `clean_train.parquet` is produced by notebook 01. In notebook 02, set `DATA_ROOT` to the folder holding `clean_train.parquet` and the `Dataset` folder, then run all cells.
+    pip install -r requirements.txt
+    streamlit run app.py
 
 ## Limits
 
-- One drive model only; the model was trained on 2023 to 2025.
-- Many failures show no warning in these readings, so no model can catch them all.
-- Only 129 failed drives in validation, so small differences between models cannot be told from chance.
-- The alarm level depends on how costly a missed failure is for the user. A decision aid, not a replacement for monitoring.
+- One drive model only.
+- Many failures show no warning in these readings.
+- Levels and the "1 in N" figures were set and measured on the same quarter, so real results may be somewhat lower.
+- Whether failure patterns drift over time was not checked.
+- A single reading is less accurate than a 9-day history.
 
 ## Data
 
-Backblaze Drive Stats, https://www.backblaze.com/cloud-storage/resources/hard-drive-test-data. Credit to Backblaze for publishing the data.
+Backblaze Drive Stats, https://www.backblaze.com/cloud-storage/resources/hard-drive-test-data
